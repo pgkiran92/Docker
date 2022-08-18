@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+    
+    environment {
+        CODE_BRANCH = 'master'
+        CODE_REPO = 'flask'
+        TIME_STAMP = new java.text.SimpleDateFormat('yyyy_MM_dd').format(new Date())
+        DOCKER_REPO = 'mslearn'
+	    DOCKER_URL = 'https://mslearn.jfrog.io/artifactory/mslearn'
+	    IMAGE_TAG = 'mslearn.jfrog.io/mslearn/streamlit'
+	    DOCKER_USER = 'username'
+	    DOCKER_CRED = 'password'
+    }
+     
+    stages {
+        
+        stage('Checkout') {
+            steps {
+              checkout([$class: 'GitSCM', 
+                branches: [[name: '*/master']],
+                extensions: [
+                    [$class: 'SparseCheckoutPaths', 
+                    sparseCheckoutPaths:[[$class:'SparseCheckoutPath', path:'/streamlit-docker-master/*']]]
+                    ],
+                userRemoteConfigs: [[url: 'https://ghp_WumEsrSWQ3EYru6c4vyTDz5kO7Q3ZMGCc@github.com/sudhakaranmca/flask.git']]])
+              sh "ls -ltr"
+          }
+        }
+        
+        stage('Docker Login') {
+            steps {
+                script {
+                     sh "docker login ${DOCKER_URL} -u ${DOCKER_USER} -p ${DOCKER_CRED}"   
+                }
+                
+            }
+        }
+        
+        stage('Building image') {
+           steps{
+                dir("streamlit-docker-master") {
+                      sh "pwd"
+                      script {
+                   
+                         sh "pwd"
+                         def customImage = docker.build "${IMAGE_TAG}" + ":${BUILD_NUMBER}"
+                         print(customImage)
+                        }
+                }
+            }
+        }
+        
+        stage('Docker Image Push') {
+          steps{    
+              
+              script {
+                       sh "docker push ${IMAGE_TAG}:${BUILD_NUMBER}"
+               }
+            }
+        }
+        
+        
+    }
+}
